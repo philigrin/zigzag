@@ -497,7 +497,7 @@ final class BrowserRootView: SpaceFrameView {
     /// With the sidebar hidden, the page is the whole window, no frame around it; the sidebar that slides out from
     /// the edge is what moves and zooms the window. With the sidebar showing, the page floats in its frame.
     var isEdgeToEdge: Bool {
-        !sidebarVisible && (Self.isBorderless || window?.styleMask.contains(.fullScreen) == true)
+        !sidebarVisible && (Self.pageMeetsEdges || window?.styleMask.contains(.fullScreen) == true)
     }
 
     /// With the sidebar hidden, the page runs to the window's edges. On unless turned off in Settings.
@@ -519,6 +519,8 @@ final class BrowserRootView: SpaceFrameView {
         }
     }
     static let topBarChanged = Notification.Name("TopBarChanged")
+    /// Borderless, unless the bar above the page shows: then the page floats in its frame, a margin all round, as in Arc.
+    static var pageMeetsEdges: Bool { isBorderless && !showsTopBar }
     let topBar = TopBarView()
 
     /// The bar above the page: as wide as the page area, down to where the page starts.
@@ -559,7 +561,7 @@ final class BrowserRootView: SpaceFrameView {
         if isEdgeToEdge { return bounds }
         if sidebarVisible {
             // Borderless, the page meets the window's edges and only its side by the sidebar is rounded.
-            if Self.isBorderless { return NSRect(x: sidebarWidth, y: 0, width: max(0, bounds.width - sidebarWidth), height: bounds.height) }
+            if Self.pageMeetsEdges { return NSRect(x: sidebarWidth, y: 0, width: max(0, bounds.width - sidebarWidth), height: bounds.height) }
             return NSRect(x: sidebarWidth, y: inset, width: max(0, bounds.width - sidebarWidth - inset), height: max(0, bounds.height - inset * 2))
         }
         return bounds.insetBy(dx: inset, dy: inset)
@@ -605,7 +607,7 @@ final class BrowserRootView: SpaceFrameView {
         card.isEdgeToEdge = isEdgeToEdge
         secondCard.isEdgeToEdge = isEdgeToEdge
         card.frame = panes.left
-        let attached = sidebarVisible && Self.isBorderless
+        let attached = sidebarVisible && Self.pageMeetsEdges
         card.squaresRightCorners = windowCorners(of: panes.left, attached: attached)
         secondCard.squaresRightCorners = panes.right.map { windowCorners(of: $0, attached: attached) } ?? (false, false)
         card.isAttached = attached
@@ -626,7 +628,7 @@ final class BrowserRootView: SpaceFrameView {
             let frame = sidePanelFrame
             sidePanel.frame = frame
             // Shaped like a page pane: the same corners, square where they're the window's own.
-            let attached = sidebarVisible && Self.isBorderless
+            let attached = sidebarVisible && Self.pageMeetsEdges
             sidePanel.setShape(radius: isEdgeToEdge ? 0 : attached ? PageCardView.attachedRadius : Tokens.Radius.card,
                                squareRight: windowCorners(of: frame, attached: attached))
         }
@@ -645,9 +647,7 @@ final class BrowserRootView: SpaceFrameView {
     override var glassFrame: NSRect {
         // An empty space shows the frame where the page would be: glass under all of it.
         // A split view's seam between its two pages shows the frame too: glass under all of it then.
-        // ponytail: the bar above the page needs glass too, so the whole window gets it; a second glass view for
-        // the bar alone would spare the blur under the page.
-        guard sidebarVisible, card.isAttached, !Self.showsTopBar, !card.isHidden, !isEmpty, secondCard.isHidden || secondCard.alphaValue == 0 else { return bounds }
+        guard sidebarVisible, card.isAttached, !card.isHidden, !isEmpty, secondCard.isHidden || secondCard.alphaValue == 0 else { return bounds }
         return NSRect(x: 0, y: 0, width: min(bounds.width, sidebarWidth + Tokens.Radius.attached * 2), height: bounds.height)
     }
 
@@ -711,10 +711,10 @@ final class BrowserRootView: SpaceFrameView {
         // Borderless: the corners square off as the page grows to the window's edges, and round again as it shrinks.
         // Beside the sidebar, borderless, the page rounds like the window's corner; floating, like a card.
         let panes = paneFrames
-        card.squaresRightCorners = windowCorners(of: panes.left, attached: visible && Self.isBorderless)
-        secondCard.squaresRightCorners = panes.right.map { windowCorners(of: $0, attached: visible && Self.isBorderless) } ?? (false, false)
-        card.isAttached = visible && Self.isBorderless
-        secondCard.isAttached = visible && Self.isBorderless
+        card.squaresRightCorners = windowCorners(of: panes.left, attached: visible && Self.pageMeetsEdges)
+        secondCard.squaresRightCorners = panes.right.map { windowCorners(of: $0, attached: visible && Self.pageMeetsEdges) } ?? (false, false)
+        card.isAttached = visible && Self.pageMeetsEdges
+        secondCard.isAttached = visible && Self.pageMeetsEdges
         card.setEdgeToEdge(isEdgeToEdge, duration: duration)
         secondCard.setEdgeToEdge(isEdgeToEdge, duration: duration)
         refreshGlassOcclusion()

@@ -27,6 +27,7 @@ final class AddressView: InteractiveView {
         captureButton.isHidden = !(camera || microphone)
         captureButton.symbol = camera ? "video.fill" : "mic.fill"
         captureButton.tint = .systemOrange
+        buttonHost?.needsLayout = true
         captureButton.toolTip = camera && microphone ? String(localized: "Using your camera and microphone", comment: "Tooltip of the address bar's capture button: the page uses both.")
             : camera ? String(localized: "Using your camera", comment: "Tooltip of the address bar's capture button: the page uses the camera.") : String(localized: "Using your microphone", comment: "Tooltip of the address bar's capture button: the page uses the microphone.")
         needsLayout = true
@@ -34,6 +35,17 @@ final class AddressView: InteractiveView {
 
     /// Extension buttons at the trailing end, like Safari's address bar.
     private(set) var actionButtons: [IconButton] = []
+    /// Where the address's buttons (Reader, camera, extensions) live and are laid out instead of inside the field: the
+    /// bar above the page puts them in a row of their own.
+    weak var buttonHost: NSView? {
+        didSet {
+            for button in [readerButton, captureButton] + actionButtons { (buttonHost ?? self).addSubview(button) }
+            needsLayout = true
+            buttonHost?.needsLayout = true
+        }
+    }
+    /// The buttons that show, in order.
+    var trailingButtons: [IconButton] { [readerButton, captureButton].filter { !$0.isHidden } + actionButtons }
 
     struct ActionButton {
         var image: NSImage?
@@ -55,10 +67,11 @@ final class AddressView: InteractiveView {
             button.onRightClick = { _ in item.menu() }
             let badge = item.needsAttention ? "!" : item.badge
             if !badge.isEmpty { button.addSubview(BadgeView(text: badge, attention: item.needsAttention)) }
-            addSubview(button)
+            (buttonHost ?? self).addSubview(button)
             return button
         }
         needsLayout = true
+        buttonHost?.needsLayout = true
     }
 
     override init(frame: NSRect) {
@@ -85,6 +98,7 @@ final class AddressView: InteractiveView {
     func setReader(available: Bool, active: Bool) {
         readerButton.isHidden = !available && !active
         readerButton.isSelected = active
+        buttonHost?.needsLayout = true
         readerButton.toolTip = Shortcuts.tooltip(active ? String(localized: "Hide Reader", comment: "Tooltip of the address bar's Reader button while Reader is on.")
                                                          : String(localized: "Show Reader", comment: "Tooltip of the address bar's Reader button."),
                                                   for: #selector(BrowserWindowController.toggleReader(_:)))
@@ -151,7 +165,7 @@ final class AddressView: InteractiveView {
         }
         let side = AddressView.buttonSide, inset = (bounds.height - side) / 2
         var right = bounds.width - inset
-        let trailingButtons = [readerButton, captureButton].filter { !$0.isHidden } + actionButtons
+        let trailingButtons = buttonHost == nil ? self.trailingButtons : []
         for (index, button) in trailingButtons.enumerated().reversed() {
             button.frame = NSRect(x: right - side, y: inset, width: side, height: side)
             // Concentric with the field's corners.
@@ -170,7 +184,7 @@ final class AddressView: InteractiveView {
     /// rather than opening the command bar.
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
-        for button in [readerButton, captureButton] + actionButtons where !button.isHidden {
+        for button in [readerButton, captureButton] + actionButtons where !button.isHidden && buttonHost == nil {
             if button.pressArea.contains(button.convert(local, from: self)) { return button }
         }
         return super.hitTest(point)
@@ -442,6 +456,7 @@ final class SidebarView: NSView {
         let host = bar ?? self
         guard address.superview !== host else { return }
         for view in [backButton, forwardButton, reloadButton, address] as [NSView] { host.addSubview(view) }
+        address.buttonHost = bar
         needsLayout = true
         host.needsLayout = true
     }
@@ -461,7 +476,7 @@ final class SidebarView: NSView {
     static let trafficLightsX = Tokens.Sidebar.lightsX
 
     /// The y position (from the top) where the traffic lights should be centered.
-    var trafficLightCenterY: CGFloat { Tokens.Sidebar.lightsCenter }
+    var trafficLightCenterY: CGFloat { BrowserRootView.showsTopBar ? TopBarView.height / 2 : Tokens.Sidebar.lightsCenter }
 
     override func layout() {
         super.layout()
@@ -486,7 +501,7 @@ final class SidebarView: NSView {
             ? round(Self.trafficLightsX + trafficLightsWidth + Tokens.Sidebar.lightsGap - (button - glyphWidth) / 2) : pad
         sidebarButton.frame = NSRect(x: lead, y: rowCenter - button / 2, width: button, height: button)
         // With the address on the bar above the page, the favorites move up into its place.
-        let addressBottom = ownsControls ? Tokens.Sidebar.addressTop + Tokens.Sidebar.addressHeight : Tokens.Sidebar.addressTop - Tokens.Space.x2
+        let addressBottom = ownsControls ? Tokens.Sidebar.addressTop + Tokens.Sidebar.addressHeight : rowCenter * 2 - Tokens.Space.x2
         if ownsControls { address.frame = NSRect(x: pad, y: Tokens.Sidebar.addressTop, width: width - pad * 2, height: Tokens.Sidebar.addressHeight) }
 
         let bottomHeight = Tokens.Sidebar.bottomBarHeight
