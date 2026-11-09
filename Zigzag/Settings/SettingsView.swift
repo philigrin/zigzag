@@ -569,6 +569,7 @@ final class SettingsView: NSView, NSTextFieldDelegate {
     private let pipToggle = Toggle()
     private let suggestionsToggle = Toggle()
     private let borderlessToggle = Toggle()
+    private let topBarToggle = Toggle()
     private let largeNamesToggle = Toggle()
     private let quitToggle = Toggle()
     private let motionToggle = Toggle()
@@ -691,6 +692,10 @@ final class SettingsView: NSView, NSTextFieldDelegate {
         appearanceGroup.add(FormRow(title: String(localized: "Borderless page", comment: "A setting in Settings › Appearance."),
                                     detail: String(localized: "The page meets the window’s edges instead of floating inside it.", comment: "Explanation under “Borderless page” in Settings › Appearance."),
                                     control: borderlessToggle))
+        topBarToggle.onChange = { on in BrowserRootView.showsTopBar = on }
+        appearanceGroup.add(FormRow(title: String(localized: "Address bar above the page", comment: "A setting in Settings › Appearance."),
+                                    detail: String(localized: "Back, forward, reload, the address and extensions sit in a bar above the page, as in Arc, and the sidebar keeps your tabs.", comment: "Explanation under “Address bar above the page” in Settings › Appearance."),
+                                    control: topBarToggle))
         largeNamesToggle.onChange = { on in SpaceHeaderView.isLarge = on }
         appearanceGroup.add(FormRow(title: String(localized: "Large space names", comment: "A setting in Settings › Appearance."),
                                     detail: String(localized: "Shows the space’s name large and light above its tabs. When off, it’s a plain heading.", comment: "Explanation under “Large space names” in Settings › Appearance."),
@@ -1517,6 +1522,7 @@ final class SettingsView: NSView, NSTextFieldDelegate {
         pipToggle.isOn = PictureInPicture.followsTabs
         suggestionsToggle.isOn = SuggestionFetcher.isOn
         borderlessToggle.isOn = BrowserRootView.isBorderless
+        topBarToggle.isOn = BrowserRootView.showsTopBar
         largeNamesToggle.isOn = SpaceHeaderView.isLarge
         quitToggle.isOn = AppDelegate.asksBeforeQuitting
         newTabPlace.selectedIndex = TabManager.NewTabPlace.allCases.firstIndex(of: TabManager.newTabPlace) ?? 0

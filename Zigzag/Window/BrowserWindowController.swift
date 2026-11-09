@@ -816,7 +816,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
     /// Where popovers that belong to the address bar (extension popups) open from: the address bar while the sidebar
     /// shows, or the top left of the page while it's hidden, so they never open off screen.
     var addressAnchor: (view: NSView, rect: NSRect) {
-        if root.sidebarVisible || root.isSidebarFloatingVisible { return (sidebar.address, sidebar.address.bounds) }
+        if BrowserRootView.showsTopBar || root.sidebarVisible || root.isSidebarFloatingVisible { return (sidebar.address, sidebar.address.bounds) }
         let card = root.cardFrame
         return (root.overlay, NSRect(x: card.minX + Tokens.Space.x3, y: card.minY + Tokens.Space.x2, width: 1, height: 1))
     }
@@ -1308,11 +1308,13 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         let sliding = isSliding
         // The picture shows only mid-slide, and only when the sidebar is (or is becoming) visible.
         sidebar.showTrafficLightsPicture(sliding ? trafficLightsPicture : nil)
-        window.trafficLightsHidden = sliding || !(docked || floating)
+        // With the sidebar hidden, the bar above the page keeps them, at its leading end.
+        let onBar = BrowserRootView.showsTopBar && !docked && !floating
+        window.trafficLightsHidden = sliding || !(docked || floating || onBar)
         let container = root.sidebarContainer.frame
         let lightHeight = window.trafficLightHeight
-        let x = (docked ? 0 : container.minX) + SidebarView.trafficLightsX
-        let y = (docked ? 0 : container.minY) + sidebar.trafficLightCenterY - lightHeight / 2
+        let x = (docked || onBar ? 0 : container.minX) + SidebarView.trafficLightsX
+        let y = (docked || onBar ? 0 : container.minY) + sidebar.trafficLightCenterY - lightHeight / 2
         window.trafficLightOrigin = NSPoint(x: x, y: y)
         if !sliding, docked || floating, let image = window.trafficLightsImage() { trafficLightsPicture = image }
         sidebar.trafficLightsWidth = window.styleMask.contains(.fullScreen) ? 0 : window.trafficLightsWidth
@@ -2048,7 +2050,7 @@ extension BrowserWindowController: CommandBarHost {
     /// A split pane's address when asked for; else the sidebar's, while the sidebar shows docked.
     func commandBarAnchor(asked: NSView?) -> NSView? {
         if let asked { return asked }
-        return root.sidebarVisible && !root.isSidebarFloatingVisible ? sidebar.address : nil
+        return BrowserRootView.showsTopBar || (root.sidebarVisible && !root.isSidebarFloatingVisible) ? sidebar.address : nil
     }
     var commandBarTabs: TabManager? { tabManager }
     var commandBarTab: Tab? { tabManager.selectedTab }

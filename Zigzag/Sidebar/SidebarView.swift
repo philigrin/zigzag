@@ -423,7 +423,11 @@ final class SidebarView: NSView {
 
     /// The sidebar is the window's title bar: drag it to move the window, and double-click it to zoom (or
     /// whatever the Mac's title bar double-click is set to do).
-    override func mouseDown(with event: NSEvent) {
+    override func mouseDown(with event: NSEvent) { Self.titleBarClick(event, in: window) }
+
+    /// A click on the window's own chrome (the sidebar, the bar above the page): a drag moves the window, a
+    /// double-click does what the Mac's title bar does.
+    static func titleBarClick(_ event: NSEvent, in window: NSWindow?) {
         guard let window else { return }
         guard event.clickCount == 2 else { window.performDrag(with: event); return }
         switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") {
@@ -431,6 +435,15 @@ final class SidebarView: NSView {
         case "None": break
         default: window.zoom(nil)
         }
+    }
+
+    /// Back, forward, reload and the address: here at the top of the sidebar, or in the bar above the page.
+    func moveControls(to bar: NSView?) {
+        let host = bar ?? self
+        guard address.superview !== host else { return }
+        for view in [backButton, forwardButton, reloadButton, address] as [NSView] { host.addSubview(view) }
+        needsLayout = true
+        host.needsLayout = true
     }
 
     @objc private func listScrolled() {
@@ -459,8 +472,9 @@ final class SidebarView: NSView {
         // Back, forward and reload at the trailing end, their glyphs a button apart, reload's ink as far from the
         // sidebar's edge as the lights' from the other.
         let reloadInk = Tokens.Symbol.inkSize("arrow.clockwise", size: Tokens.Sidebar.glyph).width
+        let ownsControls = address.superview === self
         var x = round(width - Self.trafficLightsX - reloadInk / 2 - button / 2)
-        for b in [reloadButton, forwardButton, backButton] {
+        for b in [reloadButton, forwardButton, backButton] where ownsControls {
             b.frame = NSRect(x: x, y: rowCenter - button / 2, width: button, height: button)
             x -= button
         }
@@ -471,7 +485,9 @@ final class SidebarView: NSView {
         let lead = trafficLightsWidth > 0
             ? round(Self.trafficLightsX + trafficLightsWidth + Tokens.Sidebar.lightsGap - (button - glyphWidth) / 2) : pad
         sidebarButton.frame = NSRect(x: lead, y: rowCenter - button / 2, width: button, height: button)
-        address.frame = NSRect(x: pad, y: Tokens.Sidebar.addressTop, width: width - pad * 2, height: Tokens.Sidebar.addressHeight)
+        // With the address on the bar above the page, the favorites move up into its place.
+        let addressBottom = ownsControls ? Tokens.Sidebar.addressTop + Tokens.Sidebar.addressHeight : Tokens.Sidebar.addressTop - Tokens.Space.x2
+        if ownsControls { address.frame = NSRect(x: pad, y: Tokens.Sidebar.addressTop, width: width - pad * 2, height: Tokens.Sidebar.addressHeight) }
 
         let bottomHeight = Tokens.Sidebar.bottomBarHeight
         // Its buttons sit as far from the bottom edge as from the side.
@@ -479,8 +495,8 @@ final class SidebarView: NSView {
         bottomBar.frame = NSRect(x: 0, y: bounds.height - bottomHeight + buttonInset - pad, width: width, height: bottomHeight)
         let favoritesHeight = favorites.preferredHeight(for: width - pad * 2)
         favorites.isHidden = favoritesHeight == 0
-        favorites.frame = NSRect(x: pad, y: address.frame.maxY + Tokens.Space.x2, width: width - pad * 2, height: favoritesHeight)
-        let listTop = (favoritesHeight > 0 ? favorites.frame.maxY : address.frame.maxY) + Tokens.Sidebar.sectionGap
+        favorites.frame = NSRect(x: pad, y: addressBottom + Tokens.Space.x2, width: width - pad * 2, height: favoritesHeight)
+        let listTop = (favoritesHeight > 0 ? favorites.frame.maxY : addressBottom) + Tokens.Sidebar.sectionGap
         let frames = bottomFrames()
         nowPlaying.frame = frames.nowPlaying
         let listBottom = frames.listBottom

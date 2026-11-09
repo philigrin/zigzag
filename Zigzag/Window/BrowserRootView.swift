@@ -359,6 +359,7 @@ final class BrowserRootView: SpaceFrameView {
 
     private var trackingArea: NSTrackingArea?
     private var borderlessToken: NSObjectProtocol?
+    private var topBarToken: NSObjectProtocol?
     /// Keeps the floating sidebar open, e.g. while a menu from it is showing.
     var holdReveal = false
     /// Also keeps it open: a panel that came out of it (the site panel, downloads) is still showing.
@@ -404,6 +405,15 @@ final class BrowserRootView: SpaceFrameView {
             // Even again: the two panes glide to halves rather than jumping.
             self.setSplit(ratio: 0.5, vertical: self.splitVertical, animated: true)
             self.onSplitRatioChange?(0.5, true)
+        }
+        topBar.isHidden = true
+        topBar.sidebar = sidebar
+        addSubview(topBar)
+        topBarToken = NotificationCenter.default.addObserver(forName: Self.topBarChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.needsLayout = true
+                self?.refreshGlassFrame()
+            }
         }
         addSubview(resizeHandle)
         addSubview(sidebarContainer)
@@ -500,6 +510,23 @@ final class BrowserRootView: SpaceFrameView {
     }
     static let borderlessChanged = Notification.Name("BorderlessPageChanged")
 
+    /// Back, forward, reload and the address on a bar above the page, as in Arc, instead of at the top of the sidebar.
+    static var showsTopBar: Bool {
+        get { UserDefaults.standard.bool(forKey: "topBar") }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "topBar")
+            NotificationCenter.default.post(name: topBarChanged, object: nil)
+        }
+    }
+    static let topBarChanged = Notification.Name("TopBarChanged")
+    let topBar = TopBarView()
+
+    /// The bar above the page: as wide as the page area, down to where the page starts.
+    var topBarFrame: NSRect {
+        let page = pageAreaFrame
+        return NSRect(x: page.minX, y: 0, width: page.width, height: page.minY)
+    }
+
     var cardFrame: NSRect {
         let whole = pageAreaFrame
         guard showsSidePanel else { return whole }
@@ -517,8 +544,17 @@ final class BrowserRootView: SpaceFrameView {
         return NSRect(x: page.maxX + gap, y: whole.minY, width: max(0, whole.maxX - page.maxX - gap), height: whole.height)
     }
 
-    /// The page area as a whole, before a side panel takes its share.
+    /// The page area as a whole, before a side panel takes its share: under the bar above the page when it shows.
     private var pageAreaFrame: NSRect {
+        var area = framedPageArea
+        guard Self.showsTopBar else { return area }
+        let cut = max(0, TopBarView.height - area.minY)
+        area.origin.y += cut
+        area.size.height = max(0, area.height - cut)
+        return area
+    }
+
+    private var framedPageArea: NSRect {
         let inset = Tokens.Metric.cardInset
         if isEdgeToEdge { return bounds }
         if sidebarVisible {
@@ -609,7 +645,9 @@ final class BrowserRootView: SpaceFrameView {
     override var glassFrame: NSRect {
         // An empty space shows the frame where the page would be: glass under all of it.
         // A split view's seam between its two pages shows the frame too: glass under all of it then.
-        guard sidebarVisible, card.isAttached, !card.isHidden, !isEmpty, secondCard.isHidden || secondCard.alphaValue == 0 else { return bounds }
+        // ponytail: the bar above the page needs glass too, so the whole window gets it; a second glass view for
+        // the bar alone would spare the blur under the page.
+        guard sidebarVisible, card.isAttached, !Self.showsTopBar, !card.isHidden, !isEmpty, secondCard.isHidden || secondCard.alphaValue == 0 else { return bounds }
         return NSRect(x: 0, y: 0, width: min(bounds.width, sidebarWidth + Tokens.Radius.attached * 2), height: bounds.height)
     }
 
@@ -630,6 +668,7 @@ final class BrowserRootView: SpaceFrameView {
     override func layout() {
         super.layout()
         layoutCards()
+        layoutTopBar()
         sidebarContainer.frame = sidebarFrame
         sidebarContainer.isFloating = !sidebarVisible
         let handleWidth = Tokens.Metric.resizeHandleWidth
@@ -637,6 +676,18 @@ final class BrowserRootView: SpaceFrameView {
         resizeHandle.isHidden = !sidebarVisible && !isDraggingSidebarEdge
         overlay.frame = bounds
         onLayoutChange?()
+    }
+
+    /// With the sidebar hidden, the traffic lights sit on the bar (`BrowserWindowController.layoutTrafficLights`): it
+    /// keeps them room.
+    private func layoutTopBar() {
+        topBar.isHidden = !Self.showsTopBar
+        sidebarContainer.sidebar.moveControls(to: Self.showsTopBar ? topBar : nil)
+        guard Self.showsTopBar else { return }
+        topBar.frame = topBarFrame
+        let lightsOnBar = !sidebarVisible && window?.styleMask.contains(.fullScreen) == false
+        let lights = (window as? BrowserWindow)?.trafficLightsWidth ?? 52
+        topBar.leadingRoom = lightsOnBar ? Tokens.Sidebar.lightsX + lights + Tokens.Sidebar.lightsGap - topBar.frame.minX : 0
     }
 
     func setSidebarVisible(_ visible: Bool, animated: Bool) {
@@ -669,6 +720,7 @@ final class BrowserRootView: SpaceFrameView {
         refreshGlassOcclusion()
         Tokens.Motion.animate(Tokens.Motion.slide, evenFromKeyboard: true, moves: true, {
             self.card.animator().frame = self.paneFrames.left
+            if Self.showsTopBar { self.topBar.animator().frame = self.topBarFrame }
             self.emptyHint.animator().frame = Self.markFrame(in: self.paneFrames.left)
             if let right = self.paneFrames.right { self.secondCard.animator().frame = right }
         }, completion: {
@@ -773,6 +825,7 @@ final class BrowserRootView: SpaceFrameView {
         pointerTimer?.invalidate()
         pointerObservers.forEach(NotificationCenter.default.removeObserver)
         if let borderlessToken { NotificationCenter.default.removeObserver(borderlessToken) }
+        if let topBarToken { NotificationCenter.default.removeObserver(topBarToken) }
     }
 
     private func followPointer() {
