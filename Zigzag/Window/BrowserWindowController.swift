@@ -516,6 +516,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         }
         showPages()
         sidebar.update(tab: tab)
+        root.topBar.paint(for: tab)
         // A collapsed pinned section shows the pinned page you're on, so it changes with the selection.
         if SidebarListView.isCollapsed(tabManager.currentSpaceID) { sidebar.list.reload(animated: true) } else { sidebar.list.refreshRows() }
         reloadFavorites()
@@ -949,6 +950,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
                 if tab.bookmarkID != nil { sidebar.list.refreshRows() }
             }
             sidebar.update(tab: tab)
+            root.topBar.paint(for: tab)
             updateWindowTitle()
             offerWebStoreExtension()
         case .title:
@@ -961,6 +963,8 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
             updateReaderButton()
         case .language:
             offerTranslation()
+        case .themeColor:
+            root.topBar.paint(for: tab)
         default:
             break
         }

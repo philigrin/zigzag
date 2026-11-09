@@ -451,11 +451,12 @@ final class SidebarView: NSView {
         }
     }
 
-    /// Back, forward, reload and the address: here at the top of the sidebar, or in the bar above the page.
+    /// The sidebar button, back, forward, reload and the address: here at the top of the sidebar, or in the bar above
+    /// the page.
     func moveControls(to bar: NSView?) {
         let host = bar ?? self
         guard address.superview !== host else { return }
-        for view in [backButton, forwardButton, reloadButton, address] as [NSView] { host.addSubview(view) }
+        for view in [sidebarButton, backButton, forwardButton, reloadButton, address] as [NSView] { host.addSubview(view) }
         address.buttonHost = bar
         needsLayout = true
         host.needsLayout = true
@@ -476,7 +477,7 @@ final class SidebarView: NSView {
     static let trafficLightsX = Tokens.Sidebar.lightsX
 
     /// The y position (from the top) where the traffic lights should be centered.
-    var trafficLightCenterY: CGFloat { BrowserRootView.showsTopBar ? TopBarView.height / 2 : Tokens.Sidebar.lightsCenter }
+    var trafficLightCenterY: CGFloat { BrowserRootView.showsTopBar ? Tokens.Metric.cardInset + TopBarView.height / 2 : Tokens.Sidebar.lightsCenter }
 
     override func layout() {
         super.layout()
@@ -499,7 +500,7 @@ final class SidebarView: NSView {
         let glyphWidth = Tokens.Symbol.inkSize(sidebarButton.symbol, size: Tokens.Sidebar.glyph).width
         let lead = trafficLightsWidth > 0
             ? round(Self.trafficLightsX + trafficLightsWidth + Tokens.Sidebar.lightsGap - (button - glyphWidth) / 2) : pad
-        sidebarButton.frame = NSRect(x: lead, y: rowCenter - button / 2, width: button, height: button)
+        if ownsControls { sidebarButton.frame = NSRect(x: lead, y: rowCenter - button / 2, width: button, height: button) }
         // With the address on the bar above the page, the favorites move up into its place.
         let addressBottom = ownsControls ? Tokens.Sidebar.addressTop + Tokens.Sidebar.addressHeight : rowCenter * 2 - Tokens.Space.x2
         if ownsControls { address.frame = NSRect(x: pad, y: Tokens.Sidebar.addressTop, width: width - pad * 2, height: Tokens.Sidebar.addressHeight) }

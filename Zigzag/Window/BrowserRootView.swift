@@ -523,10 +523,10 @@ final class BrowserRootView: SpaceFrameView {
     static var pageMeetsEdges: Bool { isBorderless && !showsTopBar }
     let topBar = TopBarView()
 
-    /// The bar above the page: as wide as the page area, down to where the page starts.
+    /// The bar above the page: as wide as the page area, right on top of it, the two one card.
     var topBarFrame: NSRect {
         let page = pageAreaFrame
-        return NSRect(x: page.minX, y: 0, width: page.width, height: page.minY)
+        return NSRect(x: page.minX, y: page.minY - TopBarView.height, width: page.width, height: TopBarView.height)
     }
 
     var cardFrame: NSRect {
@@ -550,9 +550,8 @@ final class BrowserRootView: SpaceFrameView {
     private var pageAreaFrame: NSRect {
         var area = framedPageArea
         guard Self.showsTopBar else { return area }
-        let cut = max(0, TopBarView.height - area.minY)
-        area.origin.y += cut
-        area.size.height = max(0, area.height - cut)
+        area.origin.y += TopBarView.height
+        area.size.height = max(0, area.height - TopBarView.height)
         return area
     }
 
@@ -597,9 +596,12 @@ final class BrowserRootView: SpaceFrameView {
     /// bottom. The window rounds those itself, so they're square; every other corner, a split's at the gap
     /// included, stays round.
     private func windowCorners(of pane: NSRect, attached: Bool) -> (top: Bool, bottom: Bool) {
-        guard attached, pane.maxX >= bounds.maxX - 1 else { return (false, false) }
-        return (pane.minY <= bounds.minY + 1, pane.maxY >= bounds.maxY - 1)
+        guard attached, pane.maxX >= bounds.maxX - 1 else { return (underBar(pane), false) }
+        return (pane.minY <= bounds.minY + 1 || underBar(pane), pane.maxY >= bounds.maxY - 1)
     }
+
+    /// A pane right under the bar above the page: its top corners are the bar's, so its own are square.
+    private func underBar(_ pane: NSRect) -> Bool { Self.showsTopBar && pane.minY <= cardFrame.minY + 1 }
 
     private func layoutCards() {
         let panes = paneFrames
@@ -609,6 +611,8 @@ final class BrowserRootView: SpaceFrameView {
         card.frame = panes.left
         let attached = sidebarVisible && Self.pageMeetsEdges
         card.squaresRightCorners = windowCorners(of: panes.left, attached: attached)
+        card.squaresLeftCorners = (underBar(panes.left), false)
+        secondCard.squaresLeftCorners = (panes.right.map(underBar) ?? false, false)
         secondCard.squaresRightCorners = panes.right.map { windowCorners(of: $0, attached: attached) } ?? (false, false)
         card.isAttached = attached
         secondCard.isAttached = attached
@@ -683,6 +687,8 @@ final class BrowserRootView: SpaceFrameView {
         sidebarContainer.sidebar.moveControls(to: Self.showsTopBar ? topBar : nil)
         guard Self.showsTopBar else { return }
         topBar.frame = topBarFrame
+        // Its top corners are the card's; the page's own top corners square off under it.
+        topBar.layer?.cornerRadius = isEdgeToEdge ? 0 : Tokens.Radius.card
     }
 
     func setSidebarVisible(_ visible: Bool, animated: Bool) {

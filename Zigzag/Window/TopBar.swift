@@ -1,6 +1,6 @@
 import AppKit
 
-/// The bar above the page, as in Arc: back, forward and reload at the leading end, the address in the middle, and the
+/// The bar above the page, as in Arc: the sidebar button, back, forward and reload at the leading end, the address in the middle, and the
 /// address's own buttons (Reader, camera, extensions) in a row at the trailing end. It holds the sidebar's own controls, moved here (`SidebarView.moveControls(to:)`), so they act
 /// and anchor popovers exactly as they do in the sidebar. On the window's frame, like the sidebar: it moves the window.
 final class TopBarView: NSView {
@@ -10,7 +10,19 @@ final class TopBarView: NSView {
     static let addressWidth: CGFloat = 560
     weak var sidebar: SidebarView?
 
-    override var isFlipped: Bool { true }
+    /// Its layout is the same either way up; unflipped, its layer's top corners are at max Y.
+    override var isFlipped: Bool { false }
+
+    /// In the page's own color, as in Arc, so the bar and the page read as one card: the site's theme color, else the
+    /// color under its page. Icons and text turn light or dark to match.
+    func paint(for tab: Tab?) {
+        let color = tab?.themeColor ?? tab?.webView?.underPageBackgroundColor
+        wantsLayer = true
+        layer?.backgroundColor = color.map { cgColor($0) }
+        layer?.cornerCurve = .continuous
+        layer?.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
+        appearance = color.map { NSAppearance(named: Tokens.Color.luminance(of: $0) < 0.5 ? .darkAqua : .aqua) } ?? nil
+    }
     override var mouseDownCanMoveWindow: Bool { true }
     override func mouseDown(with event: NSEvent) { SidebarView.titleBarClick(event, in: window) }
 
@@ -20,7 +32,8 @@ final class TopBarView: NSView {
         let b = SidebarView.toolbarButton
         let y = round((bounds.height - b) / 2)
         var x = Tokens.Sidebar.edge
-        for button in [sidebar.backButton, sidebar.forwardButton, sidebar.reloadButton] {
+        // The sidebar button first, always there, whether the sidebar shows or not.
+        for button in [sidebar.sidebarButton, sidebar.backButton, sidebar.forwardButton, sidebar.reloadButton] {
             button.frame = NSRect(x: x, y: y, width: b, height: b)
             x += b
         }
