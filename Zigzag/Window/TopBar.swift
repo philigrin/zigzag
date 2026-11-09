@@ -8,8 +8,6 @@ final class TopBarView: NSView {
     static let height: CGFloat = 36
     /// The address never gets wider than this: a long one is cut, a short one sits centered.
     static let addressWidth: CGFloat = 560
-    /// Room kept at the leading end, for the traffic lights while the sidebar is hidden.
-    var leadingRoom: CGFloat = 0 { didSet { if oldValue != leadingRoom { needsLayout = true } } }
     weak var sidebar: SidebarView?
 
     override var isFlipped: Bool { true }
@@ -21,7 +19,7 @@ final class TopBarView: NSView {
         guard let sidebar, sidebar.address.superview === self else { return }
         let b = SidebarView.toolbarButton
         let y = round((bounds.height - b) / 2)
-        var x = max(leadingRoom, Tokens.Sidebar.edge)
+        var x = Tokens.Sidebar.edge
         for button in [sidebar.backButton, sidebar.forwardButton, sidebar.reloadButton] {
             button.frame = NSRect(x: x, y: y, width: b, height: b)
             x += b

@@ -17,6 +17,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
 
     private var tokens: [SignalToken] = []
     private var selectedTabToken: SignalToken?
+    private var topBarObserver: NSObjectProtocol?
     private weak var shownTab: Tab?
     private var fadeTimer: Timer?
     var onClose: ((BrowserWindowController) -> Void)?
@@ -146,6 +147,9 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         })
         if #available(macOS 15.4, *) {
             tokens.append(ExtensionHost.shared.changed.observe { [weak self] in self?.refreshExtensionActions() })
+        }
+        topBarObserver = NotificationCenter.default.addObserver(forName: BrowserRootView.topBarChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshExtensionActions() }
         }
 
         // Fading is slow; checking once a minute is plenty.
@@ -865,8 +869,20 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         // Always there, even on a new tab: it's also where your extensions live.
         _ = tab?.url
         var attention = false
-        if #available(macOS 15.4, *) { attention = ExtensionHost.shared.actions(for: tab).contains { $0.attention != nil } }
-        sidebar.address.setActions([AddressView.ActionButton(symbol: "slider.horizontal.3",
+        var extensions: [AddressView.ActionButton] = []
+        if #available(macOS 15.4, *) {
+            let items = ExtensionHost.shared.actions(for: tab)
+            attention = items.contains { $0.attention != nil }
+            // On the bar above the page there's room for every extension's own button, as in Arc.
+            if BrowserRootView.showsTopBar {
+                extensions = items.map { item in
+                    AddressView.ActionButton(image: item.icon, label: item.label, badge: item.badge, needsAttention: item.attention != nil,
+                        action: { [weak self] anchor in ExtensionHost.shared.performAction(item, tab: self?.tabManager.selectedTab, anchor: anchor) },
+                        menu: { [weak self] in self?.extensionMenu(for: item.context) })
+                }
+            }
+        }
+        sidebar.address.setActions(extensions + [AddressView.ActionButton(symbol: "slider.horizontal.3",
             label: String(localized: "Site Controls", comment: "Name of the button by the address that opens the site panel: its tooltip and VoiceOver name."),
             needsAttention: attention,
             action: { [weak self] anchor in if let self { SitePanel.toggle(in: self, from: self.sidebar.address) } },
@@ -1308,13 +1324,11 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         let sliding = isSliding
         // The picture shows only mid-slide, and only when the sidebar is (or is becoming) visible.
         sidebar.showTrafficLightsPicture(sliding ? trafficLightsPicture : nil)
-        // With the sidebar hidden, the bar above the page keeps them, at its leading end.
-        let onBar = BrowserRootView.showsTopBar && !docked && !floating
-        window.trafficLightsHidden = sliding || !(docked || floating || onBar)
+        window.trafficLightsHidden = sliding || !(docked || floating)
         let container = root.sidebarContainer.frame
         let lightHeight = window.trafficLightHeight
-        let x = (docked || onBar ? 0 : container.minX) + SidebarView.trafficLightsX
-        let y = (docked || onBar ? 0 : container.minY) + sidebar.trafficLightCenterY - lightHeight / 2
+        let x = (docked ? 0 : container.minX) + SidebarView.trafficLightsX
+        let y = (docked ? 0 : container.minY) + sidebar.trafficLightCenterY - lightHeight / 2
         window.trafficLightOrigin = NSPoint(x: x, y: y)
         if !sliding, docked || floating, let image = window.trafficLightsImage() { trafficLightsPicture = image }
         sidebar.trafficLightsWidth = window.styleMask.contains(.fullScreen) ? 0 : window.trafficLightsWidth

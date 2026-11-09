@@ -678,16 +678,11 @@ final class BrowserRootView: SpaceFrameView {
         onLayoutChange?()
     }
 
-    /// With the sidebar hidden, the traffic lights sit on the bar (`BrowserWindowController.layoutTrafficLights`): it
-    /// keeps them room.
     private func layoutTopBar() {
         topBar.isHidden = !Self.showsTopBar
         sidebarContainer.sidebar.moveControls(to: Self.showsTopBar ? topBar : nil)
         guard Self.showsTopBar else { return }
         topBar.frame = topBarFrame
-        let lightsOnBar = !sidebarVisible && window?.styleMask.contains(.fullScreen) == false
-        let lights = (window as? BrowserWindow)?.trafficLightsWidth ?? 52
-        topBar.leadingRoom = lightsOnBar ? Tokens.Sidebar.lightsX + lights + Tokens.Sidebar.lightsGap - topBar.frame.minX : 0
     }
 
     func setSidebarVisible(_ visible: Bool, animated: Bool) {
