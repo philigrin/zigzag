@@ -875,7 +875,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
             attention = items.contains { $0.attention != nil }
             // On the bar above the page there's room for every extension's own button, as in Arc.
             if BrowserRootView.showsTopBar {
-                extensions = items.map { item in
+                extensions = items.filter { ExtensionStore.isPinnedToBar($0.id) }.map { item in
                     AddressView.ActionButton(image: item.icon, label: item.label, badge: item.badge, needsAttention: item.attention != nil,
                         action: { [weak self] anchor in ExtensionHost.shared.performAction(item, tab: self?.tabManager.selectedTab, anchor: anchor) },
                         menu: { [weak self] in self?.extensionMenu(for: item.context) })
@@ -918,6 +918,12 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
             menu.addItem(SidebarMenus.Item(String(localized: "Settings", comment: "Item in an extension's menu: opens the extension's own settings page."), symbol: "gearshape") { [weak self] in
                 self?.tabManager.newTab(url: options, title: context.webExtension.displayName)
             })
+        }
+        if BrowserRootView.showsTopBar {
+            let pinned = ExtensionStore.isPinnedToBar(id)
+            menu.addItem(SidebarMenus.Item(pinned ? String(localized: "Unpin from Toolbar", comment: "Item in an extension's menu: hides its button from the bar above the page.")
+                                                  : String(localized: "Pin to Toolbar", comment: "Item in an extension's menu: shows its button on the bar above the page."),
+                                           symbol: pinned ? "pin.slash" : "pin") { ExtensionStore.setPinnedToBar(id, !pinned) })
         }
         menu.addItem(siteAccessItem(for: id))
         menu.addItem(SidebarMenus.Item(String(localized: "Turn Off", comment: "Item in an extension's menu: turns the extension off."), symbol: "pause.circle") { ExtensionStore.setEnabled(id, false) })

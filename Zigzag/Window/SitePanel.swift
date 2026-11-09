@@ -108,19 +108,25 @@ final class SitePanel: FloatingPanelView {
 
     static func toggle(in controller: BrowserWindowController, from anchor: NSView) {
         if let current, current.superview != nil { current.close(); return }
+        // With the bar above the page, it opens from its own button at the bar's right end, as in Arc.
+        let button = BrowserRootView.showsTopBar ? controller.sidebar.address.actionButtons.last : nil
+        let anchor = button ?? anchor
         guard let panel = SitePanel(controller: controller) else { return }
         controller.closeFloatingPanels()
         panel.anchor = anchor
         let anchorFrame = anchor.convert(anchor.bounds, to: controller.root.overlay)
         // From the address bar in the sidebar: its width and left edge, just below it. With the sidebar slid out or
         // hidden it's the same width (the address keeps its width off screen), so it never grows past the sidebar.
-        panel.width = anchorFrame.width > 0 ? anchorFrame.width : controller.root.sidebarWidth - Tokens.Metric.sidebarPadding * 2
-        if controller.root.sidebarVisible, !controller.root.isSidebarFloatingVisible {
+        panel.width = button != nil ? Self.barWidth
+            : anchorFrame.width > 0 ? anchorFrame.width : controller.root.sidebarWidth - Tokens.Metric.sidebarPadding * 2
+        if button == nil, controller.root.sidebarVisible, !controller.root.isSidebarFloatingVisible {
             // The same glass panel as Downloads over the sidebar's lane, with the tabs under it faded back.
             panel.recedes = [controller.sidebar.list]
         }
         panel.frame.size = NSSize(width: panel.width, height: panel.layoutContent(dryRun: true))
-        panel.frame.origin = NSPoint(x: max(Tokens.Metric.cardInset, anchorFrame.minX), y: anchorFrame.maxY + 4)
+        // From the bar's button, it lines up with the button's right edge and stays on screen.
+        let x = button != nil ? min(anchorFrame.maxX, controller.root.overlay.bounds.maxX - Tokens.Metric.cardInset) - panel.width : anchorFrame.minX
+        panel.frame.origin = NSPoint(x: max(Tokens.Metric.cardInset, x), y: anchorFrame.maxY + 4)
         controller.root.overlay.addSubview(panel)
         panel.needsLayout = true
         // Out of the button that opened it (the site controls, at the address's right end), not a corner.
@@ -226,6 +232,9 @@ final class SitePanel: FloatingPanelView {
         ], from: moreButton)
     }
 
+    /// Its width when it opens from the bar above the page: compact, as Arc's.
+    static let barWidth: CGFloat = 300
+
     private func buildExtensions() {
         // Extensions don't run in a private window, as in Chrome's incognito: none to show, nor to get here.
         guard #available(macOS 15.4, *), !tab.isPrivate else { return }
@@ -244,6 +253,25 @@ final class SitePanel: FloatingPanelView {
                 ExtensionHost.shared.performAction(item, tab: self.tab, anchor: tile)
             }
             tile.onRightClick = { [weak self] _ in self?.controller?.extensionMenu(for: item.context) }
+            if BrowserRootView.showsTopBar {
+                let pin = IconButton(symbol: "pin.fill", size: PanelTile.pinSide, symbolSize: 8, toolTip: "")
+                func show(_ pin: IconButton, _ pinned: Bool) {
+                    pin.isSelected = pinned
+                    pin.symbol = pinned ? "pin.fill" : "pin"
+                    pin.toolTip = pinned ? String(localized: "Unpin from Toolbar", comment: "Item in an extension's menu: hides its button from the bar above the page.")
+                                         : String(localized: "Pin to Toolbar", comment: "Item in an extension's menu: shows its button on the bar above the page.")
+                    pin.setAccessibilityLabel(pin.toolTip)
+                    (pin.superview as? PanelTile)?.stateDidChange(animated: false)
+                }
+                show(pin, ExtensionStore.isPinnedToBar(item.id))
+                pin.onClick = { [weak pin] _ in
+                    let pinned = !ExtensionStore.isPinnedToBar(item.id)
+                    ExtensionStore.setPinnedToBar(item.id, pinned)
+                    if let pin { show(pin, pinned) }
+                }
+                tile.pinButton = pin
+                tile.stateDidChange(animated: false)
+            }
             addSubview(tile)
             return tile
         }
@@ -482,6 +510,11 @@ final class PanelTile: GlassTile {
     private let iconView = NSImageView()
     private let caption: Label?
     private var badgeView: BadgeView?
+    /// The small round pin in the corner, as in Arc: whether the extension's button shows on the bar above the page.
+    var pinButton: IconButton? {
+        didSet { oldValue?.removeFromSuperview(); pinButton.map { addSubview($0) }; needsLayout = true }
+    }
+    static let pinSide: CGFloat = 16
     var isOn = false { didSet { stateDidChange(animated: false) } }
     var isAttention = false
     var badge = "" {
@@ -539,6 +572,12 @@ final class PanelTile: GlassTile {
             let size = badgeView.fittingSize
             badgeView.frame = NSRect(x: bounds.width - size.width - 3, y: bounds.height - size.height - 3, width: size.width, height: size.height)
         }
+        if let pinButton {
+            // The corner opposite the badge.
+            let side = Self.pinSide
+            pinButton.frame = NSRect(x: bounds.width - side - 2, y: isFlipped ? bounds.height - side - 2 : 2, width: side, height: side)
+            pinButton.radius = side / 2
+        }
     }
 
     override func stateDidChange(animated: Bool) {
@@ -551,6 +590,8 @@ final class PanelTile: GlassTile {
         setLifted(false)
         iconView.alphaValue = isEnabled ? 1 : Tokens.Opacity.disabled
         iconView.contentTintColor = isOn ? accent : Tokens.Color.icon
+        // As in Arc: a pinned extension always wears its pin; another shows one, quieter, only under the pointer.
+        if let pinButton { pinButton.isHidden = !(pinButton.isSelected || isHovered) }
         caption?.alphaValue = isEnabled ? 1 : Tokens.Opacity.disabled
         caption?.textColor = isOn ? Tokens.Color.textPrimary : Tokens.Color.textSecondary
     }

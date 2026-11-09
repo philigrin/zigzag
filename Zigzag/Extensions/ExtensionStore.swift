@@ -11,6 +11,19 @@ import WebKit
 ///
 /// Unpacked extensions (for developers) are read in place from the folder the person chose.
 enum ExtensionStore {
+    /// Extensions whose buttons are off the bar above the page: every other one shows there, as pinned in Arc.
+    private static let unpinnedKey = "extensionsUnpinnedFromBar"
+    static func isPinnedToBar(_ id: String) -> Bool {
+        !(UserDefaults.standard.stringArray(forKey: unpinnedKey) ?? []).contains(id)
+    }
+    static func setPinnedToBar(_ id: String, _ pinned: Bool) {
+        var unpinned = Set(UserDefaults.standard.stringArray(forKey: unpinnedKey) ?? [])
+        if pinned { unpinned.remove(id) } else { unpinned.insert(id) }
+        UserDefaults.standard.set(unpinned.sorted(), forKey: unpinnedKey)
+        // Every window's bar shows the change.
+        NotificationCenter.default.post(name: BrowserRootView.topBarChanged, object: nil)
+    }
+
     static let onePasswordID = "aeblfdkhhhdcdjpifhhbdiojplfjncoa"
     private static let lastUpdateKey = "ExtensionsLastUpdateCheck"
     private static let removedKey = "RemovedExtensions"
