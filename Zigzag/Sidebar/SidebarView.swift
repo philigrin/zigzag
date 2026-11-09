@@ -451,12 +451,11 @@ final class SidebarView: NSView {
         }
     }
 
-    /// The sidebar button, back, forward, reload and the address: here at the top of the sidebar, or in the bar above
-    /// the page.
+    /// Back, forward, reload and the address: here at the top of the sidebar, or in the bar above the page.
     func moveControls(to bar: NSView?) {
         let host = bar ?? self
         guard address.superview !== host else { return }
-        for view in [sidebarButton, backButton, forwardButton, reloadButton, address] as [NSView] { host.addSubview(view) }
+        for view in [backButton, forwardButton, reloadButton, address] as [NSView] { host.addSubview(view) }
         address.buttonHost = bar
         needsLayout = true
         host.needsLayout = true
@@ -500,7 +499,7 @@ final class SidebarView: NSView {
         let glyphWidth = Tokens.Symbol.inkSize(sidebarButton.symbol, size: Tokens.Sidebar.glyph).width
         let lead = trafficLightsWidth > 0
             ? round(Self.trafficLightsX + trafficLightsWidth + Tokens.Sidebar.lightsGap - (button - glyphWidth) / 2) : pad
-        if ownsControls { sidebarButton.frame = NSRect(x: lead, y: rowCenter - button / 2, width: button, height: button) }
+        sidebarButton.frame = NSRect(x: lead, y: rowCenter - button / 2, width: button, height: button)
         // With the address on the bar above the page, the favorites move up into its place.
         let addressBottom = ownsControls ? Tokens.Sidebar.addressTop + Tokens.Sidebar.addressHeight : rowCenter * 2 - Tokens.Space.x2
         if ownsControls { address.frame = NSRect(x: pad, y: Tokens.Sidebar.addressTop, width: width - pad * 2, height: Tokens.Sidebar.addressHeight) }

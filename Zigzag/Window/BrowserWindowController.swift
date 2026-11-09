@@ -101,6 +101,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         sidebar.backButton.onRightClick = { [weak self] _ in self?.historyMenu(back: true) }
         sidebar.forwardButton.onRightClick = { [weak self] _ in self?.historyMenu(back: false) }
         sidebar.sidebarButton.onClick = { [weak self] _ in self?.toggleBrowserSidebar(nil) }
+        root.topBar.sidebarButton.onClick = { [weak self] _ in self?.toggleBrowserSidebar(nil) }
         sidebar.forwardButton.onClick = { [weak self] _ in self?.goForward(nil) }
         sidebar.address.onRightClick = { [weak self] _ in
             if let self { SitePanel.toggle(in: self, from: self.sidebar.address) }
@@ -1351,6 +1352,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         sidebar.downloadsButton.toolTip = Shortcuts.tooltip(String(localized: "Downloads", comment: "Tooltip of the sidebar's downloads button."), for: #selector(showDownloads(_:)))
         sidebar.newSpaceButton.toolTip = Shortcuts.tooltip(String(localized: "New Space", comment: "Tooltip of the button that adds a space, at the bottom of the sidebar."), for: #selector(newSpace(_:)))
         sidebar.sidebarButton.isSelected = false
+        root.topBar.sidebarButton.toolTip = sidebar.sidebarButton.toolTip
     }
 
     func windowDidResize(_ notification: Notification) { layoutTrafficLights(); onStateChange?() }

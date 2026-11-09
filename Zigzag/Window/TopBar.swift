@@ -9,14 +9,25 @@ final class TopBarView: NSView {
     /// The address never gets wider than this: a long one is cut, a short one sits centered.
     static let addressWidth: CGFloat = 560
     weak var sidebar: SidebarView?
+    /// A second sidebar button, so it's there with the sidebar hidden too; the sidebar keeps its own, to pin it open
+    /// while it's slid out over this one.
+    let sidebarButton = SidebarView.chromeButton("sidebar.left", toolTip: "")
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        addSubview(sidebarButton)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
 
     /// Its layout is the same either way up; unflipped, its layer's top corners are at max Y.
     override var isFlipped: Bool { false }
 
-    /// In the page's own color, as in Arc, so the bar and the page read as one card: the site's theme color, else the
-    /// color under its page. Icons and text turn light or dark to match.
+    /// In the page's own color, as in Arc, so the bar and the page read as one card: its background (a site's theme
+    /// color can be its header's, and stay light on a page that turned dark), else its theme color. Icons and text
+    /// turn light or dark to match.
     func paint(for tab: Tab?) {
-        let color = tab?.themeColor ?? tab?.webView?.underPageBackgroundColor
+        let color = tab?.webView?.underPageBackgroundColor ?? tab?.themeColor
         wantsLayer = true
         layer?.backgroundColor = color.map { cgColor($0) }
         layer?.cornerCurve = .continuous
@@ -33,7 +44,7 @@ final class TopBarView: NSView {
         let y = round((bounds.height - b) / 2)
         var x = Tokens.Sidebar.edge
         // The sidebar button first, always there, whether the sidebar shows or not.
-        for button in [sidebar.sidebarButton, sidebar.backButton, sidebar.forwardButton, sidebar.reloadButton] {
+        for button in [sidebarButton, sidebar.backButton, sidebar.forwardButton, sidebar.reloadButton] {
             button.frame = NSRect(x: x, y: y, width: b, height: b)
             x += b
         }
