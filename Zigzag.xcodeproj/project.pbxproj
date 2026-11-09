@@ -19,6 +19,7 @@
 		09844A022115C19F24950AE6 /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = C88A57E41A091A03DA97E06C /* CHANGELOG.md */; };
 		0A3CE807B90BECEE35BCDB08 /* UserScriptsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C1EF45053176602E3D8A4C1 /* UserScriptsTests.swift */; };
 		0C2258B7291E37CBE925C8D0 /* NumberHintsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2773876C78493A8043AE850 /* NumberHintsTests.swift */; };
+		0C32BBC38734AAA1C7EF1B56 /* TopBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD0C17A0704B5387B679CF9 /* TopBar.swift */; };
 		0CC1228D26EEC04E26173909 /* ExtensionBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 840842D8431CA3F0AD989350 /* ExtensionBridgeTests.swift */; };
 		0D86B53D6483D5ACF7C2E10B /* PaneHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0012A8BD741BA157B4BB07F0 /* PaneHeader.swift */; };
 		0DAF6898E779587B63BA4240 /* CSVImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E314E1B3C6242087C5B2B7E3 /* CSVImporter.swift */; };
@@ -332,6 +333,7 @@
 		7890881D589D032D70E5DC20 /* SecurityFixesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityFixesTests.swift; sourceTree = "<group>"; };
 		79F70CA73E1EF5C8460E9286 /* TabManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabManager.swift; sourceTree = "<group>"; };
 		7A6A928496FC897893B22DF7 /* BrowserWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserWebView.swift; sourceTree = "<group>"; };
+		7DD0C17A0704B5387B679CF9 /* TopBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopBar.swift; sourceTree = "<group>"; };
 		804A63C8F2764EC4BE20451D /* PasswordStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordStoreTests.swift; sourceTree = "<group>"; };
 		818D2FEE410E6D64CD17AADD /* logins.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = logins.json; sourceTree = "<group>"; };
 		820132CF9AAE60C1C4104C7B /* WebStoreOffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebStoreOffer.swift; sourceTree = "<group>"; };
@@ -864,6 +866,7 @@
 				95BE2DC23683FEEFF817A678 /* SidebarUndo.swift */,
 				9B14798B8A091AAE19C57100 /* SitePanel.swift */,
 				2477477EEAA33212F1AA2281 /* SpaceFrameView.swift */,
+				7DD0C17A0704B5387B679CF9 /* TopBar.swift */,
 				D5AB7730FF54C85E4477E76E /* TourDemo.swift */,
 				98D9F429D6C84167482CCFC1 /* Tutorial.swift */,
 				E748383173F4821F4C0D92B3 /* WhatsNew.swift */,
@@ -1151,6 +1154,7 @@
 				9FEEA537DE55BC1099D8DB0D /* TabStateCache.swift in Sources */,
 				C6692ED12FCC1152B3774192 /* TabSwitcher.swift in Sources */,
 				66E5020894B420AEB3943EAC /* Tokens.swift in Sources */,
+				0C32BBC38734AAA1C7EF1B56 /* TopBar.swift in Sources */,
 				51BD0DD0DD4AB16FB1D97CA8 /* TourDemo.swift in Sources */,
 				E77131ED815A795FB7D6F9B8 /* Tutorial.swift in Sources */,
 				DDFF8EFE3CB4DBF463105561 /* Updater.swift in Sources */,
