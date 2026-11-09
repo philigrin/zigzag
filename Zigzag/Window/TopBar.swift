@@ -9,8 +9,8 @@ final class TopBarView: NSView {
     /// The address never gets wider than this: a long one is cut, a short one sits centered.
     static let addressWidth: CGFloat = 560
     weak var sidebar: SidebarView?
-    /// A second sidebar button, so it's there with the sidebar hidden too; the sidebar keeps its own, to pin it open
-    /// while it's slid out over this one.
+    /// A second sidebar button, shown while the sidebar is hidden; the sidebar keeps its own, to pin it open while
+    /// it's slid out over this one.
     let sidebarButton = SidebarView.chromeButton("sidebar.left", toolTip: "")
 
     override init(frame: NSRect) {
@@ -44,7 +44,7 @@ final class TopBarView: NSView {
         let y = round((bounds.height - b) / 2)
         var x = Tokens.Sidebar.edge
         // The sidebar button first, always there, whether the sidebar shows or not.
-        for button in [sidebarButton, sidebar.backButton, sidebar.forwardButton, sidebar.reloadButton] {
+        for button in [sidebarButton, sidebar.backButton, sidebar.forwardButton, sidebar.reloadButton] where !button.isHidden {
             button.frame = NSRect(x: x, y: y, width: b, height: b)
             x += b
         }

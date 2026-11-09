@@ -687,6 +687,8 @@ final class BrowserRootView: SpaceFrameView {
         sidebarContainer.sidebar.moveControls(to: Self.showsTopBar ? topBar : nil)
         guard Self.showsTopBar else { return }
         topBar.frame = topBarFrame
+        // With the sidebar out, its own button is the one; the bar's stands in while it's hidden.
+        if topBar.sidebarButton.isHidden != sidebarVisible { topBar.sidebarButton.isHidden = sidebarVisible; topBar.needsLayout = true }
         // Its top corners are the card's; the page's own top corners square off under it.
         topBar.layer?.cornerRadius = isEdgeToEdge ? 0 : Tokens.Radius.card
     }
